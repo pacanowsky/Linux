@@ -1,0 +1,137 @@
+#!/bin/bash
+
+# Definicje kolorów
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # Brak koloru
+
+# Tworzenie kont użytkowników
+create_users() {
+  read -p "Podaj liczbę użytkowników do utworzenia: " count
+  half=$((count / 2))
+  for i in $(seq 1 $count)
+  do
+    username="user$i"
+    password="password$i"
+    sudo useradd -m -p $(openssl passwd -1 $password) $username
+    echo -e "${GREEN}$username utworzono.${NC}"
+    if [ $i -le $half ]; then
+      sudo usermod -aG studenci_informatyki $username
+      echo -e "${GREEN}$username dodano do grupy studenci_informatyki.${NC}"
+    else
+      sudo usermod -aG studenci_etyki $username
+      echo -e "${GREEN}$username dodano do grupy studenci_etyki.${NC}"
+    fi
+  done
+}
+
+# Wyświetlanie kont i grup
+display_users_and_groups() {
+  echo -e "${YELLOW}Konta użytkowników:${NC}"
+  cut -d: -f1 /etc/passwd
+  echo -e "${YELLOW}Grupy:${NC}"
+  cut -d: -f1 /etc/group
+}
+
+# Ustawianie parametrów sieciowych
+configure_network() {
+  while true; do
+    read -p "Podaj nazwę interfejsu sieciowego: " interface
+    if [ -d /sys/class/net/$interface ]; then
+      read -p "Podaj adres IP: " ip
+      read -p "Podaj maskę: " netmask
+      read -p "Podaj bramę: " gateway
+      read -p "Podaj DNS: " dns
+      echo "auto $interface
+iface $interface inet static
+      address $ip
+      netmask $netmask
+      gateway $gateway
+      dns-nameservers $dns" | sudo tee -a /etc/network/interfaces > /dev/null
+      echo -e "${GREEN}Interfejs $interface został skonfigurowany.${NC}"
+      break
+    else
+      echo -e "${RED}Interfejs sieciowy $interface nie istnieje.${NC}"
+      echo "Dostępne interfejsy:"
+      ls /sys/class/net
+      read -p "Czy chcesz kontynuować? [T/N] " cont
+      if [[ $cont == "N" || $cont == "n" ]]; then
+        break
+      fi
+    fi
+  done
+}
+
+# Automatyczna konfiguracja sieci
+auto_configure_network() {
+  while true; do
+    read -p "Podaj nazwę interfejsu sieciowego: " interface
+    if [ -d /sys/class/net/$interface ]; then
+      echo "auto $interface
+iface $interface inet dhcp" | sudo tee -a /etc/network/interfaces > /dev/null
+      echo -e "${GREEN}Interfejs $interface został skonfigurowany.${NC}"
+      break
+    else
+      echo -e "${RED}Interfejs sieciowy $interface nie istnieje.${NC}"
+      echo "Dostępne interfejsy:"
+      ls /sys/class/net
+      read -p "Czy chcesz kontynuować? [T/N] " cont
+      if [[ $cont == "N" || $cont == "n" ]]; then
+        break
+      fi
+    fi
+  done
+}
+
+# Wyświetlanie informacji o sieci
+display_network_info() {
+  ip a
+}
+
+# Główne menu
+while true
+do
+  clear
+  echo -e "${BLUE}#################################################${NC}"
+  echo -e "${BLUE}#                    Skrypcik                   #${NC}"
+  echo -e "${BLUE}#################################################${NC}"
+  echo -e "${YELLOW}1. Utwórz konta użytkowników${NC}"
+  echo -e "${YELLOW}2. Wyświetl konta i grupy${NC}"
+  echo -e "${YELLOW}3. Skonfiguruj parametry sieci${NC}"
+  echo -e "${YELLOW}4. Skonfiguruj sieć automatycznie${NC}"
+  echo -e "${YELLOW}5. Wyświetl informacje o sieci${NC}"
+  echo -e "${RED}6. Wyjdź${NC}"
+  read -p "Wybierz opcję: " option
+  case $option in
+    1)
+      create_users
+      read -p "Naciśnij dowolny klawisz, aby kontynuować..." -n1 -s
+      ;;
+    2)
+      display_users_and_groups
+      read -p "Naciśnij dowolny klawisz, aby kontynuować..." -n1 -s
+      ;;
+    3)
+      configure_network
+      read -p "Naciśnij dowolny klawisz, aby kontynuować..." -n1 -s
+      ;;
+    4)
+      auto_configure_network
+      read -p "Naciśnij dowolny klawisz, aby kontynuować..." -n1 -s
+      ;;
+    5)
+      display_network_info
+      read -p "Naciśnij dowolny klawisz, aby kontynuować..." -n1 -s
+      ;;
+    6)
+      echo -e "${GREEN}Do zobaczenia!${NC}"
+      exit 0
+      ;;
+    *)
+      echo -e "${RED}Nieznana opcja: $option${NC}"
+      read -p "Naciśnij dowolny klawisz, aby kontynuować..." -n1 -s
+      ;;
+  esac
+done

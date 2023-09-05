@@ -1,0 +1,81 @@
+#!/bin/bash
+
+# Definicje kolorów
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # Brak koloru
+
+# Sprawdzanie istnienia pliku w katalogu
+check_file_in_directory() {
+  directory="$1"
+  filename="$2"
+  filepath="$directory/$filename"
+  if [ -f "$filepath" ]; then
+    cat "$filepath"
+  else
+    echo -e "${RED}Plik $filename nie istnieje w katalogu $directory.${NC}"
+  fi
+}
+
+# Kopiowanie plików o rozszerzeniu z katalogu do innego katalogu z datą
+copy_files_with_extension() {
+  source_directory="$1"
+  target_directory="$2"
+  extension="$3"
+  date_suffix=$(date +%Y-%m-%d)
+  if [ ! -d "$source_directory" ]; then
+    echo -e "${RED}Katalog źródłowy $source_directory nie istnieje.${NC}"
+    return
+  fi
+  if [ ! -d "$target_directory" ]; then
+    echo -e "${RED}Katalog docelowy $target_directory nie istnieje.${NC}"
+    return
+  fi
+  file_count=$(find "$source_directory" -maxdepth 1 -type f -name "*.$extension" | wc -l)
+  if [ "$file_count" -eq 0 ]; then
+    echo -e "${YELLOW}Brak plików o rozszerzeniu $extension w katalogu $source_directory.${NC}"
+    return
+  fi
+  target_directory_with_date="$target_directory $date_suffix"
+  mkdir "$target_directory_with_date"
+  cp "$source_directory"/*."$extension" "$target_directory_with_date"
+  echo -e "${GREEN}Skopiowano $file_count plików o rozszerzeniu $extension do katalogu $target_directory_with_date.${NC}"
+}
+
+# Główne menu
+while true
+do
+  clear
+  echo -e "${BLUE}#################################################${NC}"
+  echo -e "${BLUE}#                Skrypt Administracyjny          #${NC}"
+  echo -e "${BLUE}#################################################${NC}"
+  echo -e "${YELLOW}1. Sprawdź plik w katalogu${NC}"
+  echo -e "${YELLOW}2. Skopiuj pliki o rozszerzeniu${NC}"
+  echo -e "${RED}0. Wyjście${NC}"
+  read -p "Wybierz opcję: " option
+  case "$option" in
+    "1")
+      read -p "Podaj ścieżkę do katalogu: " directory
+      read -p "Podaj nazwę pliku: " filename
+      check_file_in_directory "$directory" "$filename"
+      read -p "Naciśnij dowolny klawisz, aby kontynuować..." -n1 -s
+      ;;
+    "2")
+      read -p "Podaj ścieżkę do katalogu źródłowego: " source_directory
+      read -p "Podaj ścieżkę do katalogu docelowego: " target_directory
+      read -p "Podaj rozszerzenie plików: " extension
+      copy_files_with_extension "$source_directory" "$target_directory" "$extension"
+      read -p "Naciśnij dowolny klawisz, aby kontynuować..." -n1 -s
+      ;;
+    "0")
+      echo -e "${GREEN}Do widzenia!${NC}"
+      exit 0
+      ;;
+    *)
+      echo -e "${RED}Nieznana opcja: $option${NC}"
+      read -p "Naciśnij dowolny klawisz, aby kontynuować..." -n1 -s
+      ;;
+  esac
+done
